@@ -1,6 +1,9 @@
 ---
-import { render, type CollectionEntry } from "astro:content";
-import { YouTube } from "@astro-community/astro-embed-youtube";
+import { type CollectionEntry } from "astro:content";
+import { extractEpisodeContent } from "@/lib/podcast-utils";
+import { Markdown } from "@astropub/md";
+import { Icon } from "astro-icon/components";
+import VideoPlayer from "../video-player.astro";
 
 type Props = {
   episode: CollectionEntry<"podcast">;
@@ -8,22 +11,121 @@ type Props = {
 
 const { episode } = Astro.props;
 
-const { Content } = await render(episode);
+const episodeContent = extractEpisodeContent(episode.body ?? "");
 ---
 
 <div class="pl-2">
-  <div
-    class="aspect-w-16 aspect-h-9 relative m-auto aspect-video w-full rounded-lg shadow-lg duration-300 hover:translate-y-3"
-  >
-    <YouTube
-      id={episode.data.youtube}
-      posterQuality="high"
-      class="aspect-w-16 aspect-h-9 aspect-video w-full max-w-[1000px] rounded-lg"
-    />
-  </div>
+  <VideoPlayer src={episode.data.youtube} />
   <div class="p-4 py-12">
-    <article class="prose">
-      <Content />
+    <article>
+      <div class="pose">
+        <Markdown of={episodeContent.description} />
+      </div>
+      <!-- Hosts -->
+      <div class="mt-3 flex flex-row flex-wrap justify-start space-x-2">
+        <span class="mt-2 py-1 pr-2">Hosted by:</span>
+        {
+          episodeContent.hosts.map(host => (
+            <a
+              class="mt-2 block rounded-lg bg-[#D3DAE5] px-2 py-1 no-underline transition-transform hover:scale-105"
+              href={host.url}
+              target="_blank"
+            >
+              {host.title}
+            </a>
+          ))
+        }
+      </div>
+      <!-- Guests -->
+      <div class="mt-3 flex flex-row flex-wrap justify-start space-x-2">
+        <span class="mt-2 py-1 pr-2">Guests:</span>
+        {
+          episodeContent.guests.map(guest => (
+            <a
+              class="mt-2 block rounded-lg bg-[#D3DAE5] px-2 py-1 no-underline transition-transform hover:scale-105"
+              href={guest.url}
+              target="_blank"
+            >
+              {guest.title}
+            </a>
+          ))
+        }
+      </div>
+      <!-- Share actions -->
+      <div class="mt-8 flex flex-row justify-between gap-2">
+        <div class="flex w-1/2 flex-col items-center rounded-lg bg-white py-3">
+          <h3 class="text-label-sm">Play episode on:</h3>
+          <div class="flex space-x-4 pt-2">
+            <a href="#" class="text-3xl hover:text-gray-600" title="YouTube">
+              <Icon name="youtube" />
+            </a>
+            <a href="#" class="text-3xl hover:text-gray-600" title="Spotify">
+              <Icon name="spotify" />
+            </a>
+            <a
+              href="#"
+              class="text-3xl hover:text-gray-600"
+              title="Apple Podcasts"
+            >
+              <Icon name="apple-podcast" />
+            </a>
+          </div>
+        </div>
+        <div class="flex w-1/2 flex-col items-center rounded-lg bg-white py-3">
+          <h3 class="text-label-sm">Share episode:</h3>
+          <div class="flex space-x-4 pt-2">
+            <a href="#" class="text-3xl hover:text-gray-600" title="Twitter">
+              <Icon name="x" />
+            </a>
+            <a href="#" class="text-3xl hover:text-gray-600" title="LinkedIn">
+              <Icon name="linkedin" />
+            </a>
+            <a href="#" class="text-3xl hover:text-gray-600" title="Instagram">
+              <Icon name="instagram" />
+            </a>
+            <a href="#" class="text-3xl hover:text-gray-600" title="Facebook">
+              <Icon name="facebook" />
+            </a>
+          </div>
+        </div>
+      </div>
+      <div class="pose pt-4">
+        <Markdown of={episodeContent.notes} />
+      </div>
+      <div class="mt-4 pl-4">
+        <h3 class="text-label-sm">Links:</h3>
+        {
+          episodeContent.links.map(link => (
+            <a href={link.url} target="_blank" class="text-link block py-1">
+              🔗 {link.title}
+            </a>
+          ))
+        }
+      </div>
     </article>
   </div>
 </div>
+
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const youtubeVideo = document.querySelector(
+      "youtube-video"
+    ) as HTMLVideoElement;
+    const seekToTimestamp = () => {
+      const hash = window.location.hash;
+      if (hash && hash.startsWith("#")) {
+        const seconds = parseInt(hash.slice(1), 10);
+        if (!isNaN(seconds) && youtubeVideo) {
+          console.log("seeking to", youtubeVideo);
+          youtubeVideo.currentTime = seconds;
+        }
+      }
+    };
+
+    // Initial check on page load
+    seekToTimestamp();
+
+    // Listen for hash changes(clicks from notes)
+    window.addEventListener("hashchange", seekToTimestamp);
+  });
+</script>
